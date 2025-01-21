@@ -1,21 +1,24 @@
 #include<iostream>
 #include <string>
 #include <queue>
-#include <fstream>
+#include <vector>
 
 using namespace std;
 
 struct PCB
 {
-    int max_memory_size; // first line in file
-    int process_count; // second line in file
-    int process_id; // first number in line post process count
-    string state = "NEW"; // state, defaulted to NEW
-    int memory_needed_for_process; // 2nd number in the post process line
-    int number_of_instructions; // 3rd number in the post process line
-    int instruction; // the instruction encoded
-    int operand_count; // dynamically allocation occurs from this number
-}; // END OF PCB
+    int process_id;                                     // ID for the process
+    string state = "NEW";                               // the state
+    int max_memory_needed;                              // memory needed for the process
+    int number_of_instructions_for_process;             // Number of instructions in the process
+    int number_of_iterations;                           // number of iterations each instruction will take
+    int CPU_Cycles_used;                                // Number of cpu cycles used for the operation
+    int value_to_store;                                 // only needed in a load/store operation
+    int memory_needed_for_operation;                    // Max memory needed for the operation to be done
+    int system_memory_counter;                          // tracks how much memory used from main
+    vector<vector<int>> instruction_and_operand;        // instruction and operand 
+
+};
 
 void load_jobs_to_memory(queue <PCB> new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size);
 
@@ -25,35 +28,30 @@ void print_PCB(const PCB *process_control_board);
 
 int main(int argc, char **argv)
 {
+
     int max_memory_size, process_count;
+    cin >> max_memory_size;
+    cin >> process_count;
+
     queue<PCB> new_job_queue;
     queue<int> ready_queue;
-    int *main_memory;
-    fstream file ("PJ_1_inp.txt");
+    int *main_memory = new int[max_memory_size];
 
-    // check if the file is open 
-    if(!file.is_open())
+    for(int i = 0; i < process_count; i++)
     {
-        cerr << "Error opening the file!\n";
-        return 1;
+        PCB process;
+        cin >> process.process_id >> process.max_memory_needed >> process.number_of_instructions_for_process >> process.number_of_iterations 
+        >> process.CPU_Cycles_used >> process.memory_needed_for_operation;
     }
 
-    PCB process_control_board;
-    // read in data from the file into the PCB
-    file >> process_control_board.max_memory_size;
-    //cout << "MAX MEM FROM FILE: " << process_control_board.max_memory_size << endl;
+    
 
-    file >> process_control_board.process_count;
-    file >> process_control_board.process_id;
-    // skip state as is constant at the moment 
-    file >> process_control_board.memory_needed_for_process;
-    file >> process_control_board.number_of_instructions;
-    file >> process_control_board.instruction;
-    file >> process_control_board.operand_count;
 
-    print_PCB(&process_control_board);
- 
- // Test
+}
+
+void load_jobs_to_memory(queue <PCB> new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size)
+{
+
 
 }
 
@@ -64,14 +62,5 @@ void print_PCB(const PCB *process_control_board)
         cout << "PCB is empty!\n";
         return;
     }
-
-    cout << "Max memory needed: " << process_control_board->max_memory_size << endl;
-    cout << "Process count: " << process_control_board->process_count << endl;
-    cout << "Process ID: " << process_control_board->process_id << endl;
-    cout << "Process State: " << process_control_board->state << endl;
-    cout << "Memory needed for process: " << process_control_board->memory_needed_for_process << endl;
-    cout << "Number of instructions: " << process_control_board->number_of_instructions << endl;
-    cout << "Specific instruction: " << process_control_board->instruction << endl;
-    cout << "Operand count: " << process_control_board->operand_count << endl;
 }
    
