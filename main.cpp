@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
     queue<PCB> new_job_queue;
     queue<int> ready_queue;
-    int *main_memory = new int[max_memory_size];
+    vector<int> main_memory;
 
     for(int i = 0; i < process_count; i++)
     {
