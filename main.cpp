@@ -1,5 +1,4 @@
 #include<iostream>
-#include <string>
 #include <queue>
 #include <vector>
 
@@ -33,16 +32,35 @@ int main(int argc, char **argv)
     cin >> max_memory_size;
     cin >> process_count;
 
+    // define and read in the first two lines from the file
+
     queue<PCB> new_job_queue;
     queue<int> ready_queue;
+
+    // both queues defined
+
     vector<int> main_memory;
+    main_memory.resize(max_memory_size, -1); // all elements in main_memory are -1
 
     for(int i = 0; i < process_count; i++)
     {
         PCB process;
-        cin >> process.process_id >> process.max_memory_needed >> process.number_of_instructions_for_process >> process.number_of_iterations 
-        >> process.CPU_Cycles_used >> process.memory_needed_for_operation;
+
+        cin >> process.process_id 
+        >> process.max_memory_needed 
+        >> process.number_of_instructions_for_process 
+        >> process.number_of_iterations 
+        >> process.CPU_Cycles_used 
+        >> process.memory_needed_for_operation;
+
+        process.system_memory_counter = 0;
+        process.state = 0; // Defaulting to new
+
+        new_job_queue.push(process);
     }
+
+    // load jobs into main memory and populate the ready queue
+    load_jobs_to_memory(new_job_queue, ready_queue, main_memory, max_memory_size);
 
     
 
@@ -51,8 +69,7 @@ int main(int argc, char **argv)
 
 void load_jobs_to_memory(queue <PCB> new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size)
 {
-
-
+    
 }
 
 void print_PCB(const PCB *process_control_board)
