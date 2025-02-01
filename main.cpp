@@ -8,7 +8,7 @@ using namespace std;
 struct PCB
 {
     int process_id;                                     // ID for the process
-    string state = "NEW";                               // the state
+    int state;                                          // the state (encodeing)
     int max_memory_needed;                              // memory needed for the process
     int number_of_instructions_for_process;             // Number of instructions in the process
     int number_of_iterations;                           // number of iterations each instruction will take
@@ -16,7 +16,7 @@ struct PCB
     int value_to_store;                                 // only needed in a load/store operation
     int memory_needed_for_operation;                    // Max memory needed for the operation to be done
     int system_memory_counter;                          // tracks how much memory used from main
-    vector<vector<int>> instruction_and_operand;        // instruction and operand 
+    
 
 };
 
