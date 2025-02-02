@@ -123,5 +123,5 @@ void print_PCB(const PCB *process_control_board)
          << "CPU Cycles Used: " << process_control_board->cpu_cycles_used << "\n"
          << "Register Value: " << process_control_board->register_value << "\n"
          << "Max Memory Needed: " << process_control_board->max_memory_needed << "\n"
-         << "Main Memory Base: " << process_control_board->main_memory_base << "\n";
+         << "Main Memory Base: " << process_control_board->main_memory_base << "\n\n";
 }
