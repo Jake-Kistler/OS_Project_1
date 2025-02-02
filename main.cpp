@@ -100,9 +100,19 @@ void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vec
         // Check if we have enough space to load the process into main memory
         if (current_address + process.max_memory_needed > max_memory_size)
         {
-            cout << "Not enough memory to load: " << process.process_id << endl;
+            cerr << "Not enough memory to load: " << process.process_id << endl;
             continue;
         }
+
+        // Initialize all missing PCB values now
+        process.state = 0; // this is encoded for NEW
+        process.program_counter = 0;
+        process.instruction_base = current_address + 10; // this is the size of the PCB in memory
+        process.data_base = process.instruction_base + 1; // this is a placeholder for when we try to load into main memory
+        process.memory_limit = process.max_memory_needed;
+        process.cpu_cycles_used = 0;
+        process.register_value = 0;
+        process.main_memory_base = current_address;
 
         // walk across the PCB loading it's data member by member into sequential memory locations
 
