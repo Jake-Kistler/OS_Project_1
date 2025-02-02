@@ -24,6 +24,8 @@ void execute_CPU(int start_address, int *main_memory);
 
 void print_PCB(const PCB *process_control_board);
 
+void print_main_memory(const vector<int> &main_memory);
+
 int main(int argc, char **argv)
 {
 
@@ -86,6 +88,18 @@ int main(int argc, char **argv)
 
     // load jobs into main memory and populate the ready queue
     load_jobs_to_memory(new_job_queue, ready_queue, main_memory, max_memory_size);
+
+    while(!ready_queue.empty())
+    {
+        int start_address = ready_queue.front();
+        ready_queue.pop();
+        execute_CPU(start_address, main_memory.data());
+    }
+
+    cout << "\nMain memory after execution:\n";
+    print_main_memory(main_memory);
+
+    return 0;
 }
 
 void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size)
@@ -138,6 +152,46 @@ void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vec
     }
 }
 
+void execute_CPU(int start_address, int *main_memory)
+{
+    cout << "\nExecuting process at address: " << start_address << "\n";
+
+    int process_id = main_memory[start_address];
+    int &state = main_memory[start_address + 1];
+    int &program_counter = main_memory[start_address + 2];
+    int &cpu_cycles_used = main_memory[start_address + 3];
+
+    while(program_counter < 3)
+    {
+        int instruction = main_memory[start_address + 10 + program_counter];
+
+        switch(instruction)
+        {
+            case 1: // compute
+                cout << "Executing Compute\n";
+                cpu_cycles_used += 5;
+                break;
+            case 2: // print
+                cout << "Executing Print\n";
+                break;
+            case 3: // store
+                cout << "Executing Store\n";
+                break;
+            case 4: // load
+                cout << "Executing Load\n";
+                break;
+            default:
+                cout << "Unknown instruction\n";
+        }
+
+        program_counter++;
+    }
+
+    // update process state to TERMINATED
+    state = 3;
+    cout << "Process " << process_id << " completed successfully\n";
+}
+
 void print_PCB(const PCB *process_control_board)
 {
     if (process_control_board == NULL)
@@ -156,4 +210,13 @@ void print_PCB(const PCB *process_control_board)
          << "Register Value: " << process_control_board->register_value << "\n"
          << "Max Memory Needed: " << process_control_board->max_memory_needed << "\n"
          << "Main Memory Base: " << process_control_board->main_memory_base << "\n\n";
+}
+
+void print_main_memory(const vector<int> &main_memory)
+{
+    cout << "Address\tContent\n";
+    for(int i = 0; i < main_memory.size(); i++)
+    {
+        cout << i << "\t" << main_memory[i] << "\n";
+    }
 }
