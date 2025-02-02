@@ -46,20 +46,42 @@ int main(int argc, char **argv)
         int processID, maxMemNeeded, numInstructions;
         cin >> processID >> maxMemNeeded >> numInstructions;
 
-        // For this example we focus on the PCB. In a complete implementation,
-        // you would read the instructions and store them in main_memory after the PCB.
-        for (int j = 0; j < numInstructions; j++)
-        {
-            int instruction;
-            cin >> instruction; // Read and later store/process the instruction.
-        }
-
-        // Create a PCB instance for the process.
         PCB process;
         process.process_id = processID;
         process.max_memory_needed = maxMemNeeded;
-        // The remaining PCB fields will be initialized in load_jobs_to_memory.
-        new_job_queue.push(process);
+
+        for(int j = 0; j < numInstructions; j++)
+        {
+            int op_code;
+            cin >> op_code;
+
+            if(op_code == 1) // compute bring in 2 integers
+            {
+                int iterations, cycles;
+                cin >> iterations >> cycles;
+            }
+            else if(op_code == 2) // print, bring in 1 integer
+            {
+                int cycles;
+                cin >> cycles;
+            }
+            else if(op_code == 3) // store, bring in 2 integers
+            {
+                int value, address;
+                cin >> value >> address;
+            }
+            else if(op_code == 4) // load bring in 1 integer
+            {
+                int address;
+                cin >> address;
+            }
+            else
+            {
+                cerr << "Invalid opcode " << op_code << endl;
+            }
+        }
+
+        new_job_queue.push(process); // push the process onto the queue
     }
 
     // load jobs into main memory and populate the ready queue
