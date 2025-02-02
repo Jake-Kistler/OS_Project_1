@@ -1,6 +1,7 @@
 #include <iostream>
 #include <queue>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -104,32 +105,31 @@ int main(int argc, char **argv)
 
 void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size)
 {
-    int current_address = 0; // will act as a tracker for the location in main_memory
+    int current_address = 0; // Tracks the location in main_memory
 
     while (!new_job_queue.empty())
     {
-        PCB process = new_job_queue.front(); // grab the first PCB off the new_job_queue
-        new_job_queue.pop();                 // pop the queue
+        PCB process = new_job_queue.front();
+        new_job_queue.pop();
 
-        // Check if we have enough space to load the process into main memory
+        // Ensure there is enough memory space
         if (current_address + process.max_memory_needed > max_memory_size)
         {
-            cerr << "Not enough memory to load: " << process.process_id << endl;
+            cout << "Not enough memory to load process: " << process.process_id << endl;
             continue;
         }
 
-        // Initialize all missing PCB values now
-        process.state = 0; // this is encoded for NEW
+        // **Assign correct memory layout**
+        process.state = 1; // NEW
         process.program_counter = 0;
-        process.instruction_base = current_address + 10; // this is the size of the PCB in memory
-        process.data_base = process.instruction_base + 1; // this is a placeholder for when we try to load into main memory
+        process.instruction_base = current_address + 10;                            // PCB occupies first 10 memory slots
+        process.data_base = process.instruction_base + process.program_counter + 3; // Space for instructions
         process.memory_limit = process.max_memory_needed;
         process.cpu_cycles_used = 0;
         process.register_value = 0;
         process.main_memory_base = current_address;
 
-        // walk across the PCB loading it's data member by member into sequential memory locations
-
+        // **Store PCB in main memory**
         main_memory[current_address + 0] = process.process_id;
         main_memory[current_address + 1] = process.state;
         main_memory[current_address + 2] = process.program_counter;
@@ -141,13 +141,49 @@ void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vec
         main_memory[current_address + 8] = process.max_memory_needed;
         main_memory[current_address + 9] = process.main_memory_base;
 
-        // push to the ready queue
+        // **Read Instructions & Store in Main Memory**
+        int instruction_start = process.instruction_base;
+        for (int i = 0; i < process.program_counter + 3; i++) // Read exact number of instructions
+        {
+            int opcode;
+            cin >> opcode;
+            main_memory[instruction_start++] = opcode;
+
+            if (opcode == 1)
+            { // Compute: 2 extra integers (iterations, CPU cycles)
+                int iterations, cycles;
+                cin >> iterations >> cycles;
+                main_memory[instruction_start++] = iterations;
+                main_memory[instruction_start++] = cycles;
+            }
+            else if (opcode == 2)
+            { // Print: 1 extra integer (CPU cycles)
+                int cycles;
+                cin >> cycles;
+                main_memory[instruction_start++] = cycles;
+            }
+            else if (opcode == 3)
+            { // Store: 2 extra integers (value, address)
+                int value, address;
+                cin >> value >> address;
+                main_memory[instruction_start++] = value;
+                main_memory[instruction_start++] = address;
+            }
+            else if (opcode == 4)
+            { // Load: 1 extra integer (address)
+                int address;
+                cin >> address;
+                main_memory[instruction_start++] = address;
+            }
+        }
+
+        // Push to ready queue
         ready_queue.push(current_address);
 
-        // move the current address forward by the total memory for the current process
+        // Move address forward by the max memory needed
         current_address += process.max_memory_needed;
 
-        // print the PCB for testing purposes
+        // Print PCB to confirm
         print_PCB(&process);
     }
 }
@@ -214,9 +250,23 @@ void print_PCB(const PCB *process_control_board)
 
 void print_main_memory(const vector<int> &main_memory)
 {
+    ofstream out("out.txt");
+
+    if(!out)
+    {
+        cerr << "Can't open output file\n";
+        return;
+    }
+
+    out << "Address\tContent\n"; // Header
+
     cout << "Address\tContent\n";
     for(int i = 0; i < main_memory.size(); i++)
     {
-        cout << i << "\t" << main_memory[i] << "\n";
+        out << i << "\t" << main_memory[i] << "\n"; // Write memory data
     }
+
+    out.close();
+
+    cout << "Main memory contents saved to out.txt\n";
 }
