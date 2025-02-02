@@ -1,4 +1,4 @@
-#include<iostream>
+#include <iostream>
 #include <queue>
 #include <vector>
 
@@ -6,21 +6,19 @@ using namespace std;
 
 struct PCB
 {
-    int process_id = 0;             // process id
-    int state = 0;                  // state as an integer
-    int program_counter = 0;        // index of next instruction
-    int instruction_base = 0;       // starting address of the instruction
-    int data_base = 0;              // starting address of data section of the instruction
-    int memory_limit = 0;           // limit of memory used by the instruction
-    int cpu_cycles_used = 0;        // total number of CPU cycles used by the instruction
-    int register_value = 0;         // value to store for read/write operations
-    int max_memory_needed = 0;      // maximum memory required
-    int main_memory_base = 0;       // starting address of the main memory
-    
-
+    int process_id = 0;        // process id
+    int state = 0;             // state as an integer
+    int program_counter = 0;   // index of next instruction
+    int instruction_base = 0;  // starting address of the instruction
+    int data_base = 0;         // starting address of data section of the instruction
+    int memory_limit = 0;      // limit of memory used by the instruction
+    int cpu_cycles_used = 0;   // total number of CPU cycles used by the instruction
+    int register_value = 0;    // value to store for read/write operations
+    int max_memory_needed = 0; // maximum memory required
+    int main_memory_base = 0;  // starting address of the main memory
 };
 
-void load_jobs_to_memory(queue <PCB> new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size);
+void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size);
 
 void execute_CPU(int start_address, int *main_memory);
 
@@ -43,7 +41,6 @@ int main(int argc, char **argv)
     vector<int> main_memory;
     main_memory.resize(max_memory_size, -1); // all elements in main_memory are -1
 
-
     for (int i = 0; i < process_count; i++)
     {
         int processID, maxMemNeeded, numInstructions;
@@ -65,28 +62,21 @@ int main(int argc, char **argv)
         new_job_queue.push(process);
     }
 
-   
     // load jobs into main memory and populate the ready queue
     load_jobs_to_memory(new_job_queue, ready_queue, main_memory, max_memory_size);
-
-    
-
-    
-
-
 }
 
-void load_jobs_to_memory(queue <PCB> new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size)
+void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size)
 {
     int current_address = 0; // will act as a tracker for the location in main_memory
 
-    while(!new_job_queue.empty())
+    while (!new_job_queue.empty())
     {
         PCB process = new_job_queue.front(); // grab the first PCB off the new_job_queue
-        new_job_queue.pop(); // pop the queue
+        new_job_queue.pop();                 // pop the queue
 
         // Check if we have enough space to load the process into main memory
-        if(current_address + process.max_memory_needed > max_memory_size)
+        if (current_address + process.max_memory_needed > max_memory_size)
         {
             cout << "Not enough memory to load: " << process.process_id << endl;
             continue;
@@ -114,12 +104,11 @@ void load_jobs_to_memory(queue <PCB> new_job_queue, queue<int> &ready_queue, vec
         // print the PCB for testing purposes
         print_PCB(&process);
     }
-
 }
 
 void print_PCB(const PCB *process_control_board)
 {
-    if(process_control_board == NULL)
+    if (process_control_board == NULL)
     {
         cout << "PCB is empty!\n";
         return;
@@ -133,7 +122,6 @@ void print_PCB(const PCB *process_control_board)
          << "Memory Limit: " << process_control_board->memory_limit << "\n"
          << "CPU Cycles Used: " << process_control_board->cpu_cycles_used << "\n"
          << "Register Value: " << process_control_board->register_value << "\n"
-         << "Max Memory Needed: " <<  process_control_board->max_memory_needed << "\n"
+         << "Max Memory Needed: " << process_control_board->max_memory_needed << "\n"
          << "Main Memory Base: " << process_control_board->main_memory_base << "\n";
 }
-   
