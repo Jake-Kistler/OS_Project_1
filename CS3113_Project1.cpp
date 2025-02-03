@@ -90,7 +90,7 @@ int main()
     }
 
     cout << "\nMain memory after execution:\n";
-    print_main_memory(main_memory);
+    //print_main_memory(main_memory);
 
     return 0;
 }
@@ -211,7 +211,7 @@ void execute_CPU(int start_address, vector<int> &main_memory)
     cout << "Process " << process_id << " completed successfully\n";
 }
 
-void print_main_memory(const vector<int> &main_memory)
+/*void print_main_memory(const vector<int> &main_memory)
 {
     ofstream out("out.txt");
     if (!out)
@@ -232,3 +232,4 @@ void print_main_memory(const vector<int> &main_memory)
     out.close();
     cout << "Main memory contents saved to out.txt\n";
 }
+*/
