@@ -1,235 +1,164 @@
 #include <iostream>
 #include <queue>
 #include <vector>
-#include <fstream>
-
 using namespace std;
 
+// PCB Structure
 struct PCB
 {
-    int process_id = 0;
-    int state = 0;
-    int program_counter = 0;
-    int instruction_base = 0;
-    int data_base = 0;
-    int memory_limit = 0;
-    int cpu_cycles_used = 0;
-    int register_value = 0;
-    int max_memory_needed = 0;
-    int main_memory_base = 0;
-    queue<int> instructions;
-    queue<int> data;
+    int processID;
+    int state; // 0=NEW, 1=READY, 2=RUNNING, 3=TERMINATED
+    int programCounter;
+    int instructionBase;
+    int dataBase;
+    int memoryLimit;
+    int cpuCyclesUsed;
+    int registerValue;
+    int maxMemoryNeeded;
+    int mainMemoryBase;
+    vector<int> instructions;
 };
 
-void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size);
-void execute_CPU(int start_address, vector<int> &main_memory);
-void print_main_memory(const vector<int> &main_memory);
+// Load Jobs into Memory
+void loadJobsToMemory(queue<PCB> &newJobQueue, queue<int> &readyQueue, vector<int> &mainMemory, int maxMemory)
+{
+    int currentAddress = 0;
+    while (!newJobQueue.empty())
+    {
+        PCB process = newJobQueue.front();
+        newJobQueue.pop();
+
+        process.mainMemoryBase = currentAddress;
+        process.instructionBase = currentAddress + 10;
+        process.dataBase = process.instructionBase + process.instructions.size();
+
+        // Store PCB in mainMemory
+        mainMemory[currentAddress] = process.processID;
+        mainMemory[currentAddress + 1] = 1; // READY
+        mainMemory[currentAddress + 2] = process.programCounter;
+        mainMemory[currentAddress + 3] = process.instructionBase;
+        mainMemory[currentAddress + 4] = process.dataBase;
+        mainMemory[currentAddress + 5] = process.memoryLimit;
+        mainMemory[currentAddress + 6] = process.cpuCyclesUsed;
+        mainMemory[currentAddress + 7] = process.registerValue;
+        mainMemory[currentAddress + 8] = process.maxMemoryNeeded;
+        mainMemory[currentAddress + 9] = process.mainMemoryBase;
+
+        // Store Instructions in mainMemory
+        int instructionAddress = process.instructionBase;
+        int dataAddress = process.dataBase;
+        for (size_t i = 0; i < process.instructions.size(); i++)
+        {
+            int opcode = process.instructions[i];
+            mainMemory[instructionAddress++] = opcode;
+
+            if (opcode == 1) // Compute
+            {
+                mainMemory[dataAddress++] = process.instructions[++i]; // Iterations
+                mainMemory[dataAddress++] = process.instructions[++i]; // Cycles
+            }
+            else if (opcode == 2) // Print
+            {
+                mainMemory[dataAddress++] = process.instructions[++i]; // Cycles
+            }
+            else if (opcode == 3) // Store
+            {
+                mainMemory[dataAddress++] = process.instructions[++i]; // Value
+                mainMemory[dataAddress++] = process.instructions[++i]; // Address
+            }
+            else if (opcode == 4) // Load
+            {
+                mainMemory[dataAddress++] = process.instructions[++i]; // Address
+            }
+        }
+        currentAddress += (10 + process.memoryLimit);
+        readyQueue.push(process.mainMemoryBase);
+    }
+}
+
+void executeCPU(queue<int> &readyQueue, vector<int> &mainMemory)
+{
+    while (!readyQueue.empty())
+    {
+        int baseAddress = readyQueue.front();
+        readyQueue.pop();
+
+        int instructionBase = mainMemory[baseAddress + 3];
+        int dataBase = mainMemory[baseAddress + 4];
+        int programCounter = 0;
+        int cpuCyclesUsed = mainMemory[baseAddress + 6];
+        int registerValue = 0;
+
+        while (programCounter < (dataBase - instructionBase))
+        {
+            int opCode = mainMemory[instructionBase + programCounter];
+
+            if (opCode == 1) // Compute
+            {
+                cout << "compute" << endl;
+                programCounter += 3;
+            }
+            else if (opCode == 2) // Print
+            {
+                cout << "print" << endl;
+                programCounter += 2;
+            }
+            else if (opCode == 3) // Store
+            {
+                cout << "stored" << endl;
+                programCounter += 3;
+            }
+            else if (opCode == 4) // Load
+            {
+                cout << "loaded" << endl;
+                programCounter += 2;
+            }
+        }
+        mainMemory[baseAddress + 1] = 3; // TERMINATED
+        cout << "Process ID: " << mainMemory[baseAddress] << endl;
+        cout << "State: TERMINATED" << endl;
+        cout << "Program Counter: " << programCounter << endl;
+        cout << "Instruction Base: " << instructionBase << endl;
+        cout << "Data Base: " << dataBase << endl;
+        cout << "Memory Limit: " << mainMemory[baseAddress + 5] << endl;
+        cout << "CPU Cycles Used: " << cpuCyclesUsed << endl;
+        cout << "Register Value: " << registerValue << endl;
+        cout << "Max Memory Needed: " << mainMemory[baseAddress + 8] << endl;
+        cout << "Main Memory Base: " << mainMemory[baseAddress + 9] << endl;
+        cout << "Total CPU Cycles Consumed: " << cpuCyclesUsed << endl;
+    }
+}
 
 int main()
 {
-    int max_memory_size, process_count;
-    cin >> max_memory_size >> process_count;
+    int maxMemory, numProcesses;
+    vector<int> mainMemory;
+    queue<int> readyQueue;
+    queue<PCB> newJobQueue;
 
-    queue<PCB> new_job_queue;
-    queue<int> ready_queue;
-    vector<int> main_memory(max_memory_size, -1); // Initialize all memory to -1
+    cin >> maxMemory >> numProcesses;
+    mainMemory.resize(maxMemory, -1);
 
-    for (int i = 0; i < process_count; i++)
+    for (int i = 0; i < numProcesses; i++)
     {
-        int processID, maxMemNeeded, numInstructions;
-        cin >> processID >> maxMemNeeded >> numInstructions;
-
         PCB process;
-        process.process_id = processID;
-        process.max_memory_needed = maxMemNeeded;
-
+        cin >> process.processID >> process.maxMemoryNeeded;
+        process.state = 0;
+        process.programCounter = 0;
+        process.memoryLimit = process.maxMemoryNeeded;
+        process.cpuCyclesUsed = 0;
+        process.registerValue = 0;
+        int numInstructions;
+        cin >> numInstructions;
         for (int j = 0; j < numInstructions; j++)
         {
-            int op_code;
-            cin >> op_code;
-            process.instructions.push(op_code);
-
-            if (op_code == 1) // Compute: 2 extra integers (iterations, CPU cycles)
-            {
-                int iterations, cycles;
-                cin >> iterations >> cycles;
-                process.data.push(iterations);
-                process.data.push(cycles);
-            }
-            else if (op_code == 2) // Print: 1 extra integer (CPU cycles)
-            {
-                int cycles;
-                cin >> cycles;
-                process.data.push(cycles);
-            }
-            else if (op_code == 3) // Store: 2 extra integers (value, address)
-            {
-                int value, address;
-                cin >> value >> address;
-                process.data.push(value);
-                process.data.push(address);
-            }
-            else if (op_code == 4) // Load: 1 extra integer (address)
-            {
-                int address;
-                cin >> address;
-                process.data.push(address);
-            }
+            int opcode;
+            cin >> opcode;
+            process.instructions.push_back(opcode);
         }
-
-        new_job_queue.push(process);
+        newJobQueue.push(process);
     }
-
-    load_jobs_to_memory(new_job_queue, ready_queue, main_memory, max_memory_size);
-
-    while (!ready_queue.empty())
-    {
-        int start_address = ready_queue.front();
-        ready_queue.pop();
-        execute_CPU(start_address, main_memory);
-    }
-
-    cout << "\nMain memory after execution:\n";
-    //print_main_memory(main_memory);
-
+    loadJobsToMemory(newJobQueue, readyQueue, mainMemory, maxMemory);
+    executeCPU(readyQueue, mainMemory);
     return 0;
 }
-
-void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vector<int> &main_memory, int max_memory_size)
-{
-    int current_address = 0; // Tracks where to store in main memory
-
-    while (!new_job_queue.empty())
-    {
-        PCB process = new_job_queue.front();
-        new_job_queue.pop();
-
-        if (current_address + process.max_memory_needed > max_memory_size)
-        {
-            cout << "Not enough memory to load process: " << process.process_id << endl;
-            continue;
-        }
-
-        process.state = 1; 
-        process.program_counter = 0;  // ✅ Ensure initialized to 0
-        process.instruction_base = current_address + 10;
-        process.data_base = process.instruction_base + process.instructions.size();
-        process.memory_limit = process.max_memory_needed;
-        process.cpu_cycles_used = 0;
-        process.register_value = 0;
-        process.main_memory_base = current_address;
-
-        // **Store PCB in main memory**
-        main_memory[current_address + 0] = process.process_id;
-        main_memory[current_address + 1] = process.state;
-        main_memory[current_address + 2] = 0;  // ✅ Explicitly store 0 to ensure correct value
-        main_memory[current_address + 3] = process.instruction_base;
-        main_memory[current_address + 4] = process.data_base;
-        main_memory[current_address + 5] = process.memory_limit;
-        main_memory[current_address + 6] = process.cpu_cycles_used;
-        main_memory[current_address + 7] = process.register_value;
-        main_memory[current_address + 8] = process.max_memory_needed;
-        main_memory[current_address + 9] = process.main_memory_base;
-
-        int instruction_start = process.instruction_base;
-        int data_start = process.data_base;
-
-        while (!process.instructions.empty())
-        {
-            main_memory[instruction_start++] = process.instructions.front();
-            process.instructions.pop();
-        }
-
-        while (!process.data.empty())
-        {
-            main_memory[data_start++] = process.data.front();
-            process.data.pop();
-        }
-
-        ready_queue.push(current_address);
-        current_address += process.max_memory_needed;
-    }
-}
-
-
-
-
-void execute_CPU(int start_address, vector<int> &main_memory)
-{
-    int process_id = main_memory[start_address];
-    int &state = main_memory[start_address + 1];
-    int &program_counter = main_memory[start_address + 2];
-    int instruction_base = main_memory[start_address + 3];
-    int data_base = main_memory[start_address + 4];
-
-    while (program_counter < 10)
-    {
-        int instruction_address = instruction_base + program_counter;
-        int instruction = main_memory[instruction_address];
-
-        if (instruction == -1) break; // Stop at empty instruction slot
-
-        switch (instruction)
-        {
-        case 1: // Compute
-        {
-            int iterations = main_memory[data_base++];
-            int cycles = main_memory[data_base++];
-            cout << "Executing Compute: " << iterations << " iterations, " << cycles << " cycles\n";
-            break;
-        }
-        case 2: // Print
-        {
-            int cycles = main_memory[data_base++];
-            cout << "Executing Print, " << cycles << " cycles\n";
-            break;
-        }
-        case 3: // Store
-        {
-            int value = main_memory[data_base++];
-            int logical_address = main_memory[data_base++];
-            int physical_address = start_address + logical_address; // Convert logical to physical
-            main_memory[physical_address] = value;
-            cout << "Executing Store: Value " << value << " stored at logical address " << logical_address << "\n";
-            break;
-        }
-        case 4: // Load
-        {
-            int address = main_memory[data_base++];
-            cout << "Executing Load from logical address " << address << "\n";
-            break;
-        }
-        default:
-            cout << "Unknown instruction at memory address: " << instruction_address << "\n";
-            return;
-        }
-
-        program_counter++;
-    }
-
-    state = 3; 
-    cout << "Process " << process_id << " completed successfully\n";
-}
-
-/*void print_main_memory(const vector<int> &main_memory)
-{
-    ofstream out("out.txt");
-    if (!out)
-    {
-        cerr << "Can't open output file\n";
-        return;
-    }
-
-    for (int i = 0; i < main_memory.size(); i++)
-    {
-        if (main_memory[i] != -1)
-        {
-            cout << i << " : " << main_memory[i] << "\n";
-            out << i << "\t" << main_memory[i] << "\n";
-        }
-    }
-
-    out.close();
-    cout << "Main memory contents saved to out.txt\n";
-}
-*/

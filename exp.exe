@@ -1,0 +1,15 @@
+compute
+Process ID: 1
+State: TERMINATED
+Program Counter: 3
+Instruction Base: 10
+Data Base: 13
+Memory Limit: 300
+CPU Cycles Used: 0
+Register Value: 0
+Max Memory Needed: 300
+Main Memory Base: 0
+Total CPU Cycles Consumed: 0
+loaded
+loaded
+^C
