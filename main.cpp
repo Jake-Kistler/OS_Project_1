@@ -4,8 +4,11 @@
 #include <string>
 #include <queue>
 #include <tuple>
+#include <fstream>
 
 using namespace std;
+
+fstream fin ("PJ_1_inp.txt");
 
 struct PCB {
     int process_id;         // The ID of the process
@@ -14,6 +17,57 @@ struct PCB {
     int num_of_instructions; // The number of instructions the process has
     vector<tuple<int, vector<int>>> instructions; // The instructions of the process
 };
+
+void writeToMemory(vector<int>& main_memory, const vector<PCB>& processes, int main_memory_size) {
+    fill(main_memory.begin(), main_memory.end(), -1); // Initialize all elements to -1
+
+    int memory_index = 0;
+    for (const auto& process : processes) {
+        int required_memory = 10 + process.num_of_instructions + process.instructions.size() * 2; // PCB metadata + opcodes + data
+        if (memory_index + required_memory > main_memory_size) {
+            cerr << "Error: Not enough memory to allocate process " << process.process_id << endl;
+            continue;
+        }
+
+        // Allocate memory for the PCB metadata
+        main_memory[memory_index] = process.process_id;
+        main_memory[memory_index + 1] = process.state;
+        main_memory[memory_index + 2] = 0; // Placeholder for future use
+        main_memory[memory_index + 3] = process.num_of_instructions;
+        main_memory[memory_index + 4] = 13; // Placeholder for future use
+        main_memory[memory_index + 5] = process.max_memory_needed;
+        main_memory[memory_index + 6] = 0; // Placeholder for future use
+        main_memory[memory_index + 7] = 0; // Placeholder for future use
+        main_memory[memory_index + 8] = process.max_memory_needed;
+        main_memory[memory_index + 9] = 0; // Placeholder for future use
+
+        // Allocate memory for the instruction opcodes
+        int instr_base = memory_index + 10;
+        int data_base = instr_base + process.num_of_instructions;
+        for (const auto& instr : process.instructions) {
+            int opcode = get<0>(instr);
+            main_memory[instr_base++] = opcode;
+        }
+
+        // Allocate memory for the instruction data
+        for (const auto& instr : process.instructions) {
+            const auto& params = get<1>(instr);
+            for (const auto& param : params) {
+                main_memory[data_base++] = param;
+            }
+        }
+
+        // Move to the next memory block
+        memory_index += required_memory;
+    }
+}
+
+void printMemory(const vector<int>& main_memory) {
+    cout << "Main Memory:" << endl;
+    for (size_t i = 0; i < main_memory.size(); ++i) {
+        cout << i << ": " << main_memory[i] << endl;
+    }
+}
 
 int main(int argc, char **argv) {
     int main_memory_size = 0; // The size of the main memory
@@ -25,6 +79,8 @@ int main(int argc, char **argv) {
     // Read from standard input (assuming redirection from a file)
     cin >> main_memory_size;
     cin >> num_of_processes;
+
+    main_memory.resize(main_memory_size, -1); // Initialize main memory with -1 (indicating empty)
 
     for (int i = 0; i < num_of_processes; i++) {
         PCB process;
@@ -61,26 +117,11 @@ int main(int argc, char **argv) {
         processes.push_back(process);
     }
 
-    // Output the parsed processes for verification
-    for (const auto& process : processes) {
-        cout << "Process ID: " << process.process_id << endl;
-        cout << "Max Memory Needed: " << process.max_memory_needed << endl;
-        cout << "Number of Instructions: " << process.num_of_instructions << endl;
-        for (const auto& instr : process.instructions) {
-            int opcode = get<0>(instr);
-            const auto& params = get<1>(instr);
-            if (opcode == 1) {
-                cout << "Operation: Compute, Iterations: " << params[0] << ", Cycles: " << params[1] << endl;
-            } else if (opcode == 2) {
-                cout << "Operation: Print, Cycles: " << params[0] << endl;
-            } else if (opcode == 3) {
-                cout << "Operation: Store, Value: " << params[0] << ", Address: " << params[1] << endl;
-            } else if (opcode == 4) {
-                cout << "Operation: Load, Address: " << params[0] << endl;
-            }
-        }
-        cout << endl;
-    }
+    // Write processes into main memory
+    writeToMemory(main_memory, processes, main_memory_size);
+
+    // Print the main memory for verification
+    printMemory(main_memory);
 
     return 0;
 }
