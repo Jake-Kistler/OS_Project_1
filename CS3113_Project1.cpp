@@ -17,6 +17,7 @@ struct PCB
     int maxMemoryNeeded;
     int mainMemoryBase;
     vector<int> instructions;
+    vector<int> data;
 };
 
 // Load Jobs into Memory
@@ -44,7 +45,7 @@ void loadJobsToMemory(queue<PCB> &newJobQueue, queue<int> &readyQueue, vector<in
         mainMemory[currentAddress + 8] = process.maxMemoryNeeded;
         mainMemory[currentAddress + 9] = process.mainMemoryBase;
 
-        // Store Instructions in mainMemory
+        // Store Instructions and Data separately
         int instructionAddress = process.instructionBase;
         int dataAddress = process.dataBase;
         for (size_t i = 0; i < process.instructions.size(); i++)
@@ -85,16 +86,19 @@ void executeCPU(queue<int> &readyQueue, vector<int> &mainMemory)
 
         int instructionBase = mainMemory[baseAddress + 3];
         int dataBase = mainMemory[baseAddress + 4];
-        int programCounter = 0;
+        int programCounter = instructionBase;
         int cpuCyclesUsed = mainMemory[baseAddress + 6];
         int registerValue = 0;
 
-        while (programCounter < (dataBase - instructionBase))
+        while (programCounter < dataBase)
         {
-            int opCode = mainMemory[instructionBase + programCounter];
+            int opCode = mainMemory[programCounter];
 
             if (opCode == 1) // Compute
             {
+                int iterations = mainMemory[dataBase + (programCounter - instructionBase)];
+                int cycles = mainMemory[dataBase + (programCounter - instructionBase) + 1];
+                cpuCyclesUsed += iterations * cycles;
                 cout << "compute" << endl;
                 programCounter += 3;
             }
@@ -105,13 +109,37 @@ void executeCPU(queue<int> &readyQueue, vector<int> &mainMemory)
             }
             else if (opCode == 3) // Store
             {
-                cout << "stored" << endl;
+                int value = mainMemory[dataBase + (programCounter - instructionBase)];
+                int address = mainMemory[dataBase + (programCounter - instructionBase) + 1];
+                if (address < mainMemory[baseAddress + 5])
+                {
+                    mainMemory[dataBase + address] = value;
+                    cout << "stored" << endl;
+                }
+                else
+                {
+                    cout << "store error!" << endl;
+                }
                 programCounter += 3;
             }
             else if (opCode == 4) // Load
             {
-                cout << "loaded" << endl;
+                int address = mainMemory[dataBase + (programCounter - instructionBase)];
+                if (address < mainMemory[baseAddress + 5])
+                {
+                    registerValue = mainMemory[dataBase + address];
+                    cout << "loaded" << endl;
+                }
+                else
+                {
+                    cout << "load error!" << endl;
+                }
                 programCounter += 2;
+            }
+            else
+            {
+                cout << "Invalid Instruction!" << endl;
+                break;
             }
         }
         mainMemory[baseAddress + 1] = 3; // TERMINATED
@@ -129,6 +157,15 @@ void executeCPU(queue<int> &readyQueue, vector<int> &mainMemory)
     }
 }
 
+void print_memory(vector<int> &mainMemory)
+{
+    for (size_t i = 0; i < 100; i++)
+    {
+        cout << i << ": " << mainMemory[i] << endl;
+    }
+    cout << endl;
+}
+
 int main()
 {
     int maxMemory, numProcesses;
@@ -137,8 +174,7 @@ int main()
     queue<PCB> newJobQueue;
 
     cin >> maxMemory >> numProcesses;
-    mainMemory.resize(maxMemory, -1);
-
+    mainMemory.assign(maxMemory, -1);
     for (int i = 0; i < numProcesses; i++)
     {
         PCB process;
@@ -159,6 +195,13 @@ int main()
         newJobQueue.push(process);
     }
     loadJobsToMemory(newJobQueue, readyQueue, mainMemory, maxMemory);
+
+    cout << "After loading jobs to memory" << endl;
+    print_memory(mainMemory);
+
+    cout << endl << endl;
+
     executeCPU(readyQueue, mainMemory);
+    print_memory(mainMemory);
     return 0;
 }
