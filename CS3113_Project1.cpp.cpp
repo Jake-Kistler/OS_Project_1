@@ -110,8 +110,8 @@ void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vec
             continue;
         }
 
-        process.state = 1;
-        process.program_counter = 0;
+        process.state = 1; 
+        process.program_counter = 0;  // ✅ Ensure initialized to 0
         process.instruction_base = current_address + 10;
         process.data_base = process.instruction_base + process.instructions.size();
         process.memory_limit = process.max_memory_needed;
@@ -122,7 +122,7 @@ void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vec
         // **Store PCB in main memory**
         main_memory[current_address + 0] = process.process_id;
         main_memory[current_address + 1] = process.state;
-        main_memory[current_address + 2] = process.program_counter;
+        main_memory[current_address + 2] = 0;  // ✅ Explicitly store 0 to ensure correct value
         main_memory[current_address + 3] = process.instruction_base;
         main_memory[current_address + 4] = process.data_base;
         main_memory[current_address + 5] = process.memory_limit;
@@ -151,6 +151,9 @@ void load_jobs_to_memory(queue<PCB> &new_job_queue, queue<int> &ready_queue, vec
     }
 }
 
+
+
+
 void execute_CPU(int start_address, vector<int> &main_memory)
 {
     int process_id = main_memory[start_address];
@@ -164,8 +167,7 @@ void execute_CPU(int start_address, vector<int> &main_memory)
         int instruction_address = instruction_base + program_counter;
         int instruction = main_memory[instruction_address];
 
-        if (instruction == -1)
-            break; // Stop at empty instruction slot
+        if (instruction == -1) break; // Stop at empty instruction slot
 
         switch (instruction)
         {
@@ -205,7 +207,7 @@ void execute_CPU(int start_address, vector<int> &main_memory)
         program_counter++;
     }
 
-    state = 3;
+    state = 3; 
     cout << "Process " << process_id << " completed successfully\n";
 }
 
