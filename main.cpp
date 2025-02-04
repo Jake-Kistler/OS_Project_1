@@ -1,31 +1,26 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
-#include <algorithm> // for fill()
-#include <fstream>   // for file output
+#include <fstream>
+#include <algorithm>
+
 using namespace std;
 
-// Output file stream
-ofstream outputFile("output.txt");
-
-// ----------------------------------------------------------------------
-// PCB structure in memory
-// ----------------------------------------------------------------------
 struct PCB
 {
     int process_id;
-    int state; // 1=NEW
+    int state = 1; // 1 for NEW
     int max_memory_needed;
     int num_of_instructions;
     vector<tuple<int, vector<int>>> instructions;
 };
 
 // ----------------------------------------------------------------------
-// Write all processes to memory
+// Write processes to main memory
 // ----------------------------------------------------------------------
-void writeToMemory(vector<int> &main_memory, const vector<PCB> &processes, int main_memory_size)
+void writeToMemory(vector<int> &main_memory, vector<PCB> &processes, int main_memory_size)
 {
-    fill(main_memory.begin(), main_memory.end(), -1); // Initialize to -1
+    fill(main_memory.begin(), main_memory.end(), -1); // Initialize memory to -1
 
     int memory_index = 0;
     for (auto &process : processes)
@@ -34,24 +29,23 @@ void writeToMemory(vector<int> &main_memory, const vector<PCB> &processes, int m
 
         if (memory_index + required_memory > main_memory_size)
         {
-            cerr << "Error: Not enough memory to allocate process "
-                 << process.process_id << endl;
+            cerr << "Error: Not enough memory to allocate process " << process.process_id << endl;
             continue;
         }
 
-        // (1) PCB region
+        // (1) PCB region in memory
         main_memory[memory_index + 0] = process.process_id;
-        main_memory[memory_index + 1] = process.state; // default=1=NEW
+        main_memory[memory_index + 1] = process.state; // NEW
         main_memory[memory_index + 2] = 0;             // programCounter
         main_memory[memory_index + 3] = process.num_of_instructions;
-        main_memory[memory_index + 4] = 13; // placeholder
+        main_memory[memory_index + 4] = 13; // Placeholder
         main_memory[memory_index + 5] = process.max_memory_needed;
         main_memory[memory_index + 6] = 0; // cpuCyclesUsed
         main_memory[memory_index + 7] = 0; // registerValue
         main_memory[memory_index + 8] = process.max_memory_needed;
         main_memory[memory_index + 9] = memory_index; // mainMemoryBase
 
-        // (2) Write instruction opcodes
+        // (2) Store instructions (opcodes)
         int instr_base = memory_index + 10;
         int data_base = instr_base + process.num_of_instructions;
 
@@ -61,7 +55,7 @@ void writeToMemory(vector<int> &main_memory, const vector<PCB> &processes, int m
             main_memory[instr_base++] = opcode;
         }
 
-        // (3) Write instruction parameters
+        // (3) Store instruction parameters
         for (auto &instr : process.instructions)
         {
             auto &params = get<1>(instr);
@@ -71,145 +65,139 @@ void writeToMemory(vector<int> &main_memory, const vector<PCB> &processes, int m
             }
         }
 
-        // advance memory_index
         memory_index += required_memory;
     }
 }
 
 // ----------------------------------------------------------------------
-// Print the entire main memory array to console and file
+// Write the contents of memory to a file
 // ----------------------------------------------------------------------
-void printMemory(const vector<int> &main_memory)
+void writeMemoryToFile(const vector<int> &main_memory, const string &filename)
 {
-    outputFile << "Main Memory:\n";
-    cout << "Main Memory:\n";
+    ofstream fout(filename);
+    if (!fout)
+    {
+        cerr << "Error: Unable to open file " << filename << endl;
+        return;
+    }
+
+    fout << "Main Memory:\n";
     for (size_t i = 0; i < main_memory.size(); ++i)
     {
-        outputFile << i << ": " << main_memory[i] << "\n";
-        cout << i << ": " << main_memory[i] << "\n";
+        fout << i << ": " << main_memory[i] << endl;
     }
+
+    fout.close();
 }
 
 // ----------------------------------------------------------------------
-// Simulate CPU execution and write log to file
+// Execute instructions from main memory
 // ----------------------------------------------------------------------
-void simulateCPU(vector<int> &memory)
+void executeProcesses(vector<int> &main_memory, const string &filename)
 {
-    int memSize = (int)memory.size();
-    int currentIndex = 0;
-
-    while (currentIndex < memSize)
+    ofstream fout(filename, ios::app); // Append execution logs to the file
+    if (!fout)
     {
-        int pid = memory[currentIndex + 0];
+        cerr << "Error: Unable to open file " << filename << endl;
+        return;
+    }
+
+    int memSize = (int)main_memory.size();
+    int memory_index = 0;
+
+    while (memory_index < memSize)
+    {
+        int pid = main_memory[memory_index];
         if (pid == -1)
             break;
 
-        // Read PCB fields
-        int state = memory[currentIndex + 1];
-        int programCounter = memory[currentIndex + 2];
-        int numInstructions = memory[currentIndex + 3];
-        int maxMemNeeded = memory[currentIndex + 5];
-        int cpuCyclesUsed = memory[currentIndex + 6];
-        int registerValue = memory[currentIndex + 7];
-        int mainMemBase = memory[currentIndex + 9];
+        // Read PCB fields from memory
+        int &state = main_memory[memory_index + 1];
+        int &programCounter = main_memory[memory_index + 2];
+        int numInstructions = main_memory[memory_index + 3];
+        int memoryLimit = main_memory[memory_index + 5];
+        int &cpuCyclesUsed = main_memory[memory_index + 6];
+        int &registerValue = main_memory[memory_index + 7];
+        int instruction_base = memory_index + 10;
+        int data_base = instruction_base + numInstructions;
 
-        memory[currentIndex + 1] = 3; // RUNNING
-        int instrStart = currentIndex + 10;
-        int dataStart = instrStart + numInstructions;
+        fout << "Executing Process ID: " << pid << endl;
 
-        int paramIndex = dataStart;
+        state = 3; // Set process state to RUNNING
+
+        int param_index = data_base;
         for (int i = 0; i < numInstructions; i++)
         {
-            int opcode = memory[instrStart + i];
+            int opcode = main_memory[instruction_base + i];
 
-            switch (opcode)
-            {
-            case 1:
-            {
-                int iterations = memory[paramIndex++];
-                int cycles = memory[paramIndex++];
-                outputFile << "compute\n";
-                cout << "compute\n";
+            if (opcode == 1)
+            { // Compute
+                int iterations = main_memory[param_index++];
+                int cycles = main_memory[param_index++];
+                fout << "compute" << endl;
                 cpuCyclesUsed += cycles;
                 programCounter++;
-                break;
             }
-            case 2:
-            {
-                int cycles = memory[paramIndex++];
-                outputFile << "print\n";
-                cout << "print\n";
+            else if (opcode == 2)
+            { // Print
+                int cycles = main_memory[param_index++];
+                fout << "print" << endl;
                 cpuCyclesUsed += cycles;
                 programCounter++;
-                break;
             }
-            case 3:
-            {
-                int value = memory[paramIndex++];
-                int address = memory[paramIndex++];
-                if (address >= 0 && address < memSize)
+            else if (opcode == 3)
+            { // Store
+                int value = main_memory[param_index++];
+                int address = main_memory[param_index++];
+                if (address < memSize)
                 {
-                    memory[address] = value;
-                    outputFile << "store\n";
-                    cout << "store\n";
+                    main_memory[address] = value;
+                    fout << "stored" << endl;
                 }
                 else
                 {
-                    outputFile << "store error!\n";
-                    cout << "store error!\n";
+                    fout << "store error!" << endl;
                 }
                 cpuCyclesUsed += 1;
                 programCounter++;
-                break;
             }
-            case 4:
-            {
-                int address = memory[paramIndex++];
-                if (address >= 0 && address < memSize)
+            else if (opcode == 4)
+            { // Load
+                int address = main_memory[param_index++];
+                if (address < memSize)
                 {
-                    registerValue = memory[address];
-                    outputFile << "load\n";
-                    cout << "load\n";
+                    registerValue = main_memory[address];
+                    fout << "loaded" << endl;
                 }
                 else
                 {
-                    outputFile << "load error!\n";
-                    cout << "load error!\n";
+                    fout << "load error!" << endl;
                 }
                 cpuCyclesUsed += 1;
                 programCounter++;
-                break;
-            }
-            default:
-                outputFile << "Unknown opcode " << opcode << "\n";
-                cout << "Unknown opcode " << opcode << "\n";
-                programCounter++;
-                break;
             }
         }
 
-        memory[currentIndex + 1] = 4; // TERMINATED
-        memory[currentIndex + 2] = programCounter;
-        memory[currentIndex + 6] = cpuCyclesUsed;
-        memory[currentIndex + 7] = registerValue;
+        state = 4; // TERMINATED
 
-        // Write final PCB contents to file
-        outputFile << "\nPCB Contents (Stored in Main Memory):\n";
-        outputFile << "Process ID:       " << memory[currentIndex + 0] << "\n";
-        outputFile << "State:            TERMINATED\n";
-        outputFile << "Program Counter:  " << memory[currentIndex + 2] << "\n";
-        outputFile << "Instruction Base: " << (currentIndex + 10) << "\n";
-        outputFile << "Data Base:        " << (currentIndex + 10 + numInstructions) << "\n";
-        outputFile << "Memory Limit:     " << maxMemNeeded << "\n";
-        outputFile << "CPU Cycles Used:  " << memory[currentIndex + 6] << "\n";
-        outputFile << "Register Value:   " << memory[currentIndex + 7] << "\n";
-        outputFile << "Max Memory Needed:" << memory[currentIndex + 5] << "\n";
-        outputFile << "Main Memory Base: " << memory[currentIndex + 9] << "\n";
-        outputFile << "Total CPU Cycles Consumed: " << memory[currentIndex + 6] << "\n";
-        outputFile << "--------------------------------\n";
+        fout << "\nPCB Contents (Stored in Main Memory):\n";
+        fout << "Process ID: " << pid << endl;
+        fout << "State: TERMINATED" << endl;
+        fout << "Program Counter: " << programCounter << endl;
+        fout << "Instruction Base: " << instruction_base << endl;
+        fout << "Data Base: " << data_base << endl;
+        fout << "Memory Limit: " << memoryLimit << endl;
+        fout << "CPU Cycles Used: " << cpuCyclesUsed << endl;
+        fout << "Register Value: " << registerValue << endl;
+        fout << "Max Memory Needed: " << memoryLimit << endl;
+        fout << "Main Memory Base: " << memory_index << endl;
+        fout << "Total CPU Cycles Consumed: " << cpuCyclesUsed << endl;
+        fout << "--------------------------------------\n";
 
-        currentIndex += 10 + numInstructions + numInstructions * 2;
+        memory_index += 10 + numInstructions + numInstructions * 2;
     }
+
+    fout.close();
 }
 
 // ----------------------------------------------------------------------
@@ -217,53 +205,59 @@ void simulateCPU(vector<int> &memory)
 // ----------------------------------------------------------------------
 int main()
 {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
+    int main_memory_size, num_of_processes;
+    cin >> main_memory_size >> num_of_processes;
 
-    int main_memory_size = 0;
-    int num_of_processes = 0;
-
-    cin >> main_memory_size;
-    cin >> num_of_processes;
-
-    vector<int> main_memory(main_memory_size, -1);
     vector<PCB> processes;
-    processes.reserve(num_of_processes);
+    vector<int> main_memory(main_memory_size, -1);
 
-    for (int i = 0; i < num_of_processes; i++)
+    for (int i = 0; i < num_of_processes; ++i)
     {
-        PCB p;
-        cin >> p.process_id >> p.max_memory_needed >> p.num_of_instructions;
-        p.state = 1;
+        PCB process;
+        cin >> process.process_id >> process.max_memory_needed >> process.num_of_instructions;
 
-        for (int j = 0; j < p.num_of_instructions; j++)
+        for (int j = 0; j < process.num_of_instructions; ++j)
         {
             int opcode;
             cin >> opcode;
             vector<int> params;
 
             if (opcode == 1)
-            {
-                int iters, cyc;
-                cin >> iters >> cyc;
-                params.push_back(iters);
-                params.push_back(cyc);
+            { // Compute
+                int iterations, cycles;
+                cin >> iterations >> cycles;
+                params.push_back(iterations);
+                params.push_back(cycles);
             }
-            else
-            {
-                int val;
-                cin >> val;
-                params.push_back(val);
+            else if (opcode == 2)
+            { // Print
+                int cycles;
+                cin >> cycles;
+                params.push_back(cycles);
             }
-            p.instructions.push_back(make_tuple(opcode, params));
+            else if (opcode == 3)
+            { // Store
+                int value, address;
+                cin >> value >> address;
+                params.push_back(value);
+                params.push_back(address);
+            }
+            else if (opcode == 4)
+            { // Load
+                int address;
+                cin >> address;
+                params.push_back(address);
+            }
+
+            process.instructions.push_back(make_tuple(opcode, params));
         }
-        processes.push_back(p);
+
+        processes.push_back(process);
     }
 
     writeToMemory(main_memory, processes, main_memory_size);
-    printMemory(main_memory);
-    simulateCPU(main_memory);
+    writeMemoryToFile(main_memory, "output.txt");
+    executeProcesses(main_memory, "output.txt");
 
-    outputFile.close();
     return 0;
 }
